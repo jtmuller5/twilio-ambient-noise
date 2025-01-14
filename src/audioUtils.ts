@@ -117,7 +117,8 @@ interface AudioFormat {
 
 export async function streamPCMToTwilio(
   connection: TwilioSocket,
-  pcmFilePath: string
+  pcmFilePath: string,
+  volumeFactor = 1.0 // new optional parameter
 ) {
   if (!connection.streamSid) {
     throw new Error("No streamSid available");
@@ -137,12 +138,27 @@ export async function streamPCMToTwilio(
     const frame = pcmBuffer.slice(offset, offset + FRAME_SIZE);
 
     // Interpret as 16-bit samples
-    // Using the underlying ArrayBuffer:
     const int16Frame = new Int16Array(
       frame.buffer,
       frame.byteOffset,
       frame.byteLength / 2
     );
+
+    // --- Apply volume factor ----------------------------------
+    for (let i = 0; i < int16Frame.length; i++) {
+      // Multiply by volumeFactor
+      let sample = Math.round(int16Frame[i] * volumeFactor);
+
+      // Clamp to valid 16-bit range
+      if (sample > 32767) {
+        sample = 32767;
+      } else if (sample < -32768) {
+        sample = -32768;
+      }
+
+      int16Frame[i] = sample;
+    }
+    // ----------------------------------------------------------
 
     // Now encode to mu-law
     const mulawChunk = encodeMuLawBuffer(int16Frame);
