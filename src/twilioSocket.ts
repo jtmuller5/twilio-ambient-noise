@@ -55,7 +55,7 @@ twilioWss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
               }, 20); // Send every 20ms for 8kHz audio
             } */
 
-            streamPCMToTwilio(connection, "src/assets/typing.raw");
+            streamPCMToTwilio(connection, "src/assets/ambient.raw");
             break;
 
           case "media":

@@ -1,3 +1,6 @@
+> [!NOTE]
+> If you need to suppress background noise on a Twilio call, check out my [twilio-voice-background-noise-suppression](https://github.com/jtmuller5/twilio-voice-background-noise-suppression) repo
+
 # Setup
 
 Since MP3 is a compressed audio format and not raw PCM, you need to first convert your MP3 file to raw PCM. It's easiest to do this manually using ffmpeg:
@@ -5,6 +8,11 @@ Since MP3 is a compressed audio format and not raw PCM, you need to first conver
 ```bash
 ffmpeg -i src/assets/typing.mp3 -ar 8000 -ac 1 -f s16le pipe:1 > output.raw
 ```
+
+Sounds were downloaded from https://pixabay.com:
+
+- Keyboard Typing: https://pixabay.com/sound-effects/keyboard-typing-250308/
+- Ambient Noise: https://pixabay.com/sound-effects/ambient-noise-236388/
 
 # Twilio Resources
 
