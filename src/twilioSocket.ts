@@ -48,6 +48,7 @@ twilioWss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
 
           case "start":
             console.log("Twilio stream started: ", jsonMessage);
+            // TODO - Send white noise or stream audio file
             /* if (!noiseInterval) {
               noiseInterval = setInterval(() => {
                 sendNoiseChunk(connection);
