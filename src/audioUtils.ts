@@ -1,3 +1,6 @@
+import { TwilioSocket } from "./twilioSocket";
+import * as fs from "fs";
+
 /**
  * Generates white noise samples
  */
@@ -104,4 +107,60 @@ function muLawEncode(sample: number): number {
 
   const ulawByte = ~(sign | (exponent << 4) | (mantissa & 0x0f)) & 0xff;
   return ulawByte;
+}
+
+interface AudioFormat {
+  channels: number;
+  sampleRate: number;
+  bitDepth: number;
+}
+
+export async function streamPCMToTwilio(
+  connection: TwilioSocket,
+  pcmFilePath: string
+) {
+  if (!connection.streamSid) {
+    throw new Error("No streamSid available");
+  }
+
+  // Read the entire PCM file (16-bit, 8kHz, mono)
+  const pcmBuffer = fs.readFileSync(pcmFilePath);
+
+  // For 20ms at 8kHz → 160 samples. Each sample is 2 bytes (16-bit).
+  const SAMPLES_PER_FRAME = 160;
+  const FRAME_SIZE = SAMPLES_PER_FRAME * 2;
+
+  let outboundChunkCounter = 0;
+
+  for (let offset = 0; offset < pcmBuffer.length; offset += FRAME_SIZE) {
+    // Slice 320 bytes from the buffer
+    const frame = pcmBuffer.slice(offset, offset + FRAME_SIZE);
+
+    // Interpret as 16-bit samples
+    // Using the underlying ArrayBuffer:
+    const int16Frame = new Int16Array(
+      frame.buffer,
+      frame.byteOffset,
+      frame.byteLength / 2
+    );
+
+    // Now encode to mu-law
+    const mulawChunk = encodeMuLawBuffer(int16Frame);
+
+    // Build Twilio media message
+    const mediaMessage = {
+      event: "media",
+      streamSid: connection.streamSid,
+      media: {
+        payload: mulawChunk.toString("base64"),
+        track: "outbound",
+        chunk: (++outboundChunkCounter).toString(),
+        timestamp: Date.now().toString(),
+      },
+    };
+
+    // Send and wait 20ms
+    connection.ws.send(JSON.stringify(mediaMessage));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
 }

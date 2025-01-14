@@ -1,3 +1,11 @@
+# Setup
+
+Since MP3 is a compressed audio format and not raw PCM, you need to first convert your MP3 file to raw PCM. It's easiest to do this manually using ffmpeg:
+
+```bash
+ffmpeg -i src/assets/typing.mp3 -ar 8000 -ac 1 -f s16le pipe:1 > output.raw
+```
+
 # Twilio Resources
 
 ## Start Payload

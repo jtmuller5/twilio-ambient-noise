@@ -1,7 +1,11 @@
 import { IncomingMessage } from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import { promises as fs } from "fs";
-import { encodeMuLawBuffer, generateWhiteNoise } from "./audioUtils";
+import {
+  encodeMuLawBuffer,
+  generateWhiteNoise,
+  streamPCMToTwilio,
+} from "./audioUtils";
 
 export interface TwilioSocket {
   ws: WebSocket;
@@ -36,7 +40,6 @@ twilioWss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
           connection.streamSid = jsonMessage.streamSid;
           console.log(`StreamSid set: ${connection.streamSid}`);
         }
-
         switch (jsonMessage.event) {
           case "connected":
             console.log("Twilio stream connected");
@@ -45,11 +48,13 @@ twilioWss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
 
           case "start":
             console.log("Twilio stream started: ", jsonMessage);
-            if (!noiseInterval) {
+            /* if (!noiseInterval) {
               noiseInterval = setInterval(() => {
                 sendNoiseChunk(connection);
               }, 20); // Send every 20ms for 8kHz audio
-            }
+            } */
+
+            streamPCMToTwilio(connection, "src/assets/typing.raw");
             break;
 
           case "media":
