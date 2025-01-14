@@ -1,6 +1,7 @@
 import { IncomingMessage } from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import { promises as fs } from "fs";
+import { encodeMuLawBuffer, generateWhiteNoise } from "./audioUtils";
 
 export interface TwilioSocket {
   ws: WebSocket;
@@ -10,6 +11,8 @@ export interface TwilioSocket {
 }
 
 export const twilioWss = new WebSocketServer({ noServer: true });
+
+let noiseInterval: NodeJS.Timeout | null = null;
 
 twilioWss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
   console.log("Twilio WebSocket connected");
@@ -42,6 +45,11 @@ twilioWss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
 
           case "start":
             console.log("Twilio stream started: ", jsonMessage);
+            if (!noiseInterval) {
+              noiseInterval = setInterval(() => {
+                sendNoiseChunk(connection);
+              }, 20); // Send every 20ms for 8kHz audio
+            }
             break;
 
           case "media":
@@ -72,3 +80,33 @@ twilioWss.on("connection", async (ws: WebSocket, request: IncomingMessage) => {
     console.log(`WebSocket closed with code ${code}, reason: ${reason}`);
   });
 });
+
+const CHUNK_SIZE = 160; // Standard µ-law chunk size for 8kHz audio (20ms)
+let outboundChunkCounter = 0;
+
+function sendNoiseChunk(connection: TwilioSocket) {
+  try {
+    // 1. Generate noise for this chunk
+    const noise = generateWhiteNoise(CHUNK_SIZE, 300); // Adjust amplitude as needed
+
+    // 2. Convert to µ-law
+    const encodedBuffer = encodeMuLawBuffer(noise);
+
+    // 3. Create media message
+    const mediaMessage = {
+      event: "media",
+      streamSid: connection.streamSid,
+      media: {
+        payload: encodedBuffer.toString("base64"),
+        track: "outbound",
+        chunk: (++outboundChunkCounter).toString(),
+        timestamp: Date.now().toString(),
+      },
+    };
+
+    // 4. Send to Twilio
+    connection.ws.send(JSON.stringify(mediaMessage));
+  } catch (err) {
+    console.error("Error sending noise chunk:", err);
+  }
+}
